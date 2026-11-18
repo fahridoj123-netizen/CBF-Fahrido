@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ movie.title }} — Rekomendasi Film Mirip{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- Breadcrumb -->
+    <nav class="flex items-center gap-2 text-xs text-slate-400">
+        <a href="{% url 'recommender:home' %}" class="hover:text-white transition-colors">Katalog</a>
+        <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+        <span class="text-slate-300 font-semibold truncate">{{ movie.title }}</span>
+    </nav>
+
+    <!-- Selected Movie Showcase (Anchor Item) -->
+    <div class="relative glass-panel rounded-3xl p-6 sm:p-8 lg:p-10 border border-slate-700/70 overflow-hidden shadow-2xl">
+        <!-- Background subtle glow -->
+        <div class="absolute -top-24 -right-24 w-96 h-96 bg-rose-600/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col md:flex-row gap-8 items-start">
+            
+            <!-- Poster -->
+            <div class="w-full md:w-64 lg:w-72 flex-shrink-0 rounded-2xl overflow-hidden shadow-2xl border border-slate-700/80 aspect-[2/3] bg-slate-900">
+                {% if movie.poster_url %}
+                <img 
+                    src="{{ movie.poster_url }}" 
+                    alt="{{ movie.title }}" 
+                    class="w-full h-full object-cover"
+                    onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-full h-full flex flex-col items-center justify-center p-4 text-center bg-slate-900\'><i class=\'fa-solid fa-film text-slate-600 text-4xl mb-3\'></i><span class=\'text-xs text-slate-400 font-semibold\'>{{ movie.title|addslashes }}</span></div>';"
+                >
+                {% else %}
+                <div class="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-slate-900">
+                    <i class="fa-solid fa-film text-slate-600 text-4xl mb-3"></i>
+                    <span class="text-xs text-slate-400 font-semibold">{{ movie.title }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Details -->
+            <div class="flex-1 space-y-5">
+                <div>
+                    <div class="flex flex-wrap items-center gap-2 mb-3">
+                        <span class="px-3 py-1 rounded-full bg-rose-600/20 text-rose-400 text-xs font-bold border border-rose-500/30 flex items-center gap-1.5">
+                            <i class="fa-solid fa-crosshairs text-xs"></i> Anchor Film (Basis Rekomendasi)
+                        </span>
+                        {% if movie.year %}
+                        <span class="px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700">
+                            Tahun: {{ movie.year }}
+                        </span>
+                        {% endif %}
+                        <span class="px-2.5 py-1 rounded-full bg-slate-800 text-amber-400 text-xs font-bold border border-slate-700 flex items-center gap-1">
+                            <i class="fa-solid fa-star text-xs"></i> {{ movie.vote_average }} / 10
+                            {% if movie.vote_count %}
+                            <span class="text-slate-400 font-normal">({{ movie.vote_count }} votes)</span>
+                            {% endif %}
+                        </span>
+                        <span class="text-xs text-slate-400 font-mono">MovieLens ID: {{ movie.movieId }}</span>
+                    </div>
+
+                    <h1 class="font-brand text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
+                        {{ movie.title }}
+                    </h1>
+
+                    {% if movie.tagline %}
+                    <p class="text-sm italic text-rose-300/80 mt-1 font-medium">"{{ movie.tagline }}"</p>
+                    {% endif %}
+                </div>
+
+                <!-- Genres -->
+                <div>
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Genre Film:</h4>
+                    <div class="flex flex-wrap gap-1.5">
+                        {% for g in movie.genres_list %}
+                        <span class="px-3 py-1 rounded-lg bg-slate-800/90 text-slate-200 text-xs font-semibold border border-slate-700">
+                            {{ g }}
+                        </span>
+                        {% empty %}
+                        <span class="text-xs text-slate-500">Tidak ada info genre</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- User Tags from MovieLens -->
+                {% if movie.tags_list %}
+                <div>
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">User Tags (MovieLens):</h4>
+                    <div class="flex flex-wrap gap-1.5">
+                        {% for t in movie.tags_list %}
+                        <span class="px-2.5 py-0.5 rounded-md bg-indigo-950/60 text-indigo-300 text-[11px] font-medium border border-indigo-800/50">
+                            #{{ t }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Overview -->
+                <div>
+                    <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Sinopsis / Deskripsi Konten:</h4>
+                    <p class="text-sm text-slate-300 leading-relaxed max-w-3xl">
+                        {{ movie.overview|default:"Sinopsis film ini belum tersedia di metadata. Ekstraksi fitur konten tetap dilakukan secara akurat melalui perpaduan genre dan tag pengguna MovieLens." }}
+                    </p>
+                </div>
+
+                <!-- Quick Info on TF-IDF Vector -->
+                <div class="pt-3 border-t border-slate-800/80 flex flex-wrap items-center gap-4 text-xs text-slate-400">
+                    <span class="flex items-center gap-1.5">
+                        <i class="fa-solid fa-code text-indigo-400"></i> Ruang Vektor: <strong>12.000 Dimensi TF-IDF</strong>
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                        <i class="fa-solid fa-calculator text-rose-400"></i> Metrik Kedekatan: <strong>Kalkulasi Cosine Similarity</strong>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommendations Header & Metric Scorecard -->
+    <div class="space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+            <div>
+                <h2 class="font-brand text-2xl font-bold text-white flex items-center gap-2.5">
+                    <i class="fa-solid fa-wand-magic-sparkles text-rose-500"></i>
+                    <span>Film Serupa yang Direkomendasikan</span>
+                </h2>
+                <p class="text-xs text-slate-400 mt-1 max-w-2xl">
+                    Daftar film di bawah ini diurutkan berdasarkan kedekatan sudut vektor (Cosine Similarity) pada representasi fitur TF-IDF (Genre, Tag, &amp; Sinopsis).
+                </p>
+            </div>
+
+            <!-- K Selector Dropdown -->
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-400 font-medium whitespace-nowrap">Jumlah Rekomendasi (K):</span>
+                <div class="flex items-center bg-slate-900 border border-slate-700 rounded-xl p-1">
+                    <a href="?k=5" class="px-2.5 py-1 rounded-lg text-xs font-semibold {% if k == 5 %}bg-rose-600 text-white{% else %}text-slate-400 hover:text-white{% endif %}">5</a>
+                    <a href="?k=10" class="px-2.5 py-1 rounded-lg text-xs font-semibold {% if k == 10 %}bg-rose-600 text-white{% else %}text-slate-400 hover:text-white{% endif %}">10</a>
+                    <a href="?k=15" class="px-2.5 py-1 rounded-lg text-xs font-semibold {% if k == 15 %}bg-rose-600 text-white{% else %}text-slate-400 hover:text-white{% endif %}">15</a>
+                    <a href="?k=20" class="px-2.5 py-1 rounded-lg text-xs font-semibold {% if k == 20 %}bg-rose-600 text-white{% else %}text-slate-400 hover:text-white{% endif %}">20</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Evaluation Metric Panel: Precision@K and Mathematical Insight -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <!-- Precision@K Card -->
+            <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center gap-4">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl font-bold border border-emerald-500/30">
+                    <i class="fa-solid fa-bullseye"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 font-medium">Metrik Evaluasi:</span>
+                    <h3 class="text-xl font-extrabold text-white">
+                        Precision@{{ k }}: <span class="text-emerald-400">{{ precision_at_k }}%</span>
+                    </h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">
+                        {{ relevant_count }} dari {{ recommendations|length }} film memiliki kesesuaian genre.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Mathematical Vector Angle Card -->
+            <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center gap-4">
+                <div class="w-14 h-14 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl font-bold border border-indigo-500/30">
+                    <i class="fa-solid fa-angle"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 font-medium">Prinsip Geometri Vektor:</span>
+                    <h3 class="text-sm font-bold text-white">Kalkulasi Sudut Vektor \(\theta\)</h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">
+                        Sudut \(\theta\) mendekati \(0^\circ\) menunjukkan keselarasan konten yang sangat identik.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Latency Card -->
+            <div class="glass-panel p-5 rounded-2xl border border-slate-800 flex items-center gap-4">
+                <div class="w-14 h-14 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-2xl font-bold border border-rose-500/30">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-slate-400 font-medium">Performa Komputasi:</span>
+                    <h3 class="text-sm font-bold text-white">Inferensi Real-Time &lt; 10 ms</h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">
+                        Matriks sparse dihitung instan menggunakan Scikit-learn di memori RAM.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Recommendations Movie Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        {% for rec in recommendations %}
+        <div class="group flex flex-col bg-slate-900/70 rounded-2xl overflow-hidden border border-slate-800 hover:border-rose-500/60 hover:bg-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-rose-950/30">
+            
+            <!-- Poster -->
+            <a href="{% url 'recommender:movie_detail' rec.movieId %}" class="relative aspect-[2/3] w-full bg-slate-800 overflow-hidden block">
+                {% if rec.poster_url %}
+                <img 
+                    src="{{ rec.poster_url }}" 
+                    alt="{{ rec.title }}" 
+                    loading="lazy"
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-full h-full flex flex-col items-center justify-center p-4 text-center bg-slate-900\'><i class=\'fa-solid fa-film text-slate-600 text-3xl mb-2\'></i><span class=\'text-xs text-slate-400 font-semibold\'>{{ rec.title|addslashes }}</span></div>';"
+                >
+                {% else %}
+                <div class="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-slate-900">
+                    <i class="fa-solid fa-film text-slate-600 text-3xl mb-2"></i>
+                    <span class="text-xs text-slate-400 font-semibold">{{ rec.title }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Rank Position Badge -->
+                <div class="absolute top-2.5 left-2.5 w-6 h-6 rounded-full bg-rose-600 text-white text-[11px] font-extrabold flex items-center justify-center shadow-md">
+                    #{{ forloop.counter }}
+                </div>
+
+                <!-- Rating -->
+                <div class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-lg bg-black/75 backdrop-blur-md text-amber-400 text-xs font-bold border border-white/10 flex items-center gap-1 shadow">
+                    <i class="fa-solid fa-star text-[10px]"></i> {{ rec.vote_average }}
+                </div>
+
+                <!-- Similarity Score Ribbon -->
+                <div class="absolute bottom-2.5 inset-x-2.5 px-2.5 py-1.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-white/10 flex items-center justify-between text-xs shadow-lg">
+                    <div class="flex items-center gap-1 font-bold text-rose-400">
+                        <i class="fa-solid fa-chart-simple text-[10px]"></i>
+                        <span>{{ rec.similarity_percentage }}%</span>
+                    </div>
+                    <div class="text-[11px] font-mono text-indigo-300" title="Sudut Vektor Cosine (Theta)">
+                        θ = {{ rec.vector_angle_deg }}°
+                    </div>
+                </div>
+            </a>
+
+            <!-- Card Body -->
+            <div class="p-4 flex flex-col flex-1 justify-between gap-3">
+                <div class="space-y-2">
+                    <a href="{% url 'recommender:movie_detail' rec.movieId %}">
+                        <h3 class="font-semibold text-sm text-white group-hover:text-rose-400 transition-colors line-clamp-1" title="{{ rec.title }}">
+                            {{ rec.title }}
+                        </h3>
+                    </a>
+
+                    <!-- Relevancy Indicator Badge -->
+                    <div>
+                        {% if rec.is_relevant %}
+                        <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
+                            <i class="fa-solid fa-check text-[9px]"></i> Genre Relevan
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-semibold">
+                            Konteks Serupa
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Shared or Target Genres -->
+                    <div class="flex flex-wrap gap-1">
+                        {% for g in rec.genres_list|slice:":2" %}
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60 font-medium">
+                            {{ g }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Switch / Watch This Movie Action -->
+                <a 
+                    href="{% url 'recommender:movie_detail' rec.movieId %}" 
+                    class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-md shadow-rose-600/20"
+                >
+                    <i class="fa-solid fa-play text-[10px]"></i>
+                    <span>Tonton Film Ini</span>
+                </a>
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+{% endblock %}

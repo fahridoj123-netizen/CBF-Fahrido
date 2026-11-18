@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CineMatch AI — Content-Based Movie Recommendation System{% endblock %}</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#E50914',
+                            crimson: '#B81D24',
+                            dark: '#141414',
+                            card: '#1F1F1F',
+                            muted: '#2A2A2A',
+                            border: '#333333',
+                            accent: '#6366F1'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts & Font Awesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- MathJax for rendering math formulas -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0F0F12;
+            color: #F3F4F6;
+        }
+        .font-brand {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .poster-glow:hover {
+            box-shadow: 0 10px 25px -5px rgba(229, 9, 20, 0.4), 0 8px 10px -6px rgba(229, 9, 20, 0.3);
+        }
+        .glass-panel {
+            background: rgba(26, 26, 33, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #141414;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4B5563;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#0d0e12] text-slate-100 antialiased selection:bg-rose-600 selection:text-white">
+
+    <!-- Navbar -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+            
+            <!-- Logo / Brand -->
+            <a href="{% url 'recommender:home' %}" class="flex items-center gap-3 group">
+                <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-rose-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-rose-600/30 group-hover:scale-105 transition-transform duration-200">
+                    <i class="fa-solid fa-film text-white text-lg"></i>
+                </div>
+                <div>
+                    <span class="font-brand text-2xl font-extrabold tracking-tight text-white block">
+                        Cine<span class="text-rose-500">Match</span><span class="text-xs ml-1.5 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/30">CBF</span>
+                    </span>
+                    <span class="text-[11px] text-slate-400 font-medium tracking-wide">Content-Based Filtering & Cosine Vector</span>
+                </div>
+            </a>
+
+            <!-- Search Bar with Live Autocomplete -->
+            <div class="relative flex-1 max-w-md hidden md:block">
+                <form action="{% url 'recommender:home' %}" method="GET" class="relative">
+                    <div class="relative flex items-center">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 text-slate-400 text-sm pointer-events-none"></i>
+                        <input 
+                            type="text" 
+                            name="q" 
+                            id="global-search-input"
+                            value="{{ current_query }}"
+                            placeholder="Cari judul film, genre, atau tag..." 
+                            autocomplete="off"
+                            class="w-full bg-slate-900/90 text-white placeholder-slate-400 text-sm rounded-full pl-11 pr-10 py-2.5 border border-slate-700/60 focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all shadow-inner"
+                        >
+                        {% if current_query %}
+                        <a href="{% url 'recommender:home' %}" class="absolute right-3 text-slate-400 hover:text-white text-xs">
+                            <i class="fa-solid fa-xmark"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </form>
+
+                <!-- Autocomplete Dropdown List -->
+                <div id="search-dropdown" class="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden hidden z-50">
+                    <div id="search-results" class="divide-y divide-slate-800 max-h-80 overflow-y-auto">
+                        <!-- Loaded dynamically via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex items-center gap-2 sm:gap-4">
+                <a href="{% url 'recommender:home' %}" class="px-3.5 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-clapperboard text-rose-500 text-xs"></i>
+                    <span>Katalog Film</span>
+                </a>
+                <a href="{% url 'recommender:methodology' %}" class="px-3.5 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-square-root-variable text-indigo-400 text-xs"></i>
+                    <span>Metodologi & Teori</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Mobile Search Bar (Visible on mobile only) -->
+        <div class="px-4 pb-3 md:hidden">
+            <form action="{% url 'recommender:home' %}" method="GET" class="relative">
+                <div class="relative flex items-center">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-slate-400 text-xs pointer-events-none"></i>
+                    <input 
+                        type="text" 
+                        name="q" 
+                        value="{{ current_query }}"
+                        placeholder="Cari film atau genre..." 
+                        class="w-full bg-slate-900 text-white placeholder-slate-400 text-xs rounded-xl pl-9 pr-8 py-2 border border-slate-700 focus:outline-none focus:border-rose-500"
+                    >
+                    {% if current_query %}
+                    <a href="{% url 'recommender:home' %}" class="absolute right-3 text-slate-400 hover:text-white text-xs">
+                        <i class="fa-solid fa-xmark"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-20 border-t border-slate-800 bg-[#090A0D]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-slate-400">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-rose-600/20 text-rose-500 flex items-center justify-center font-bold text-sm border border-rose-500/30">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-slate-200">Sistem Rekomendasi Film Real-Time</p>
+                        <p class="text-xs text-slate-500">Berbasis Content-Based Filtering, TF-IDF, & Kalkulasi Sudut Vektor Cosine Similarity</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-4 text-xs">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700">
+                        <i class="fa-solid fa-database text-rose-400 text-[10px]"></i> MovieLens Small Dataset
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700">
+                        <i class="fa-solid fa-vector-square text-indigo-400 text-[10px]"></i> 12.000 Vektor Fitur TF-IDF
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700">
+                        <i class="fa-solid fa-stopwatch text-emerald-400 text-[10px]"></i> Inferensi &lt; 10ms
+                    </span>
+                </div>
+            </div>
+            
+            <div class="mt-8 pt-6 border-t border-slate-800/60 text-center text-xs text-slate-500">
+                Dikembangkan dengan Django, Scikit-learn, MovieLens & TMDb Metadata. Dibuat untuk demonstrasi sistem rekomendasi yang relevan, presisi, dan transparan secara matematis.
+            </div>
+        </div>
+    </footer>
+
+    <!-- Global Scripts (Live Autocomplete Search) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('global-search-input');
+            const dropdown = document.getElementById('search-dropdown');
+            const resultsContainer = document.getElementById('search-results');
+            let debounceTimer;
+
+            if (searchInput && dropdown && resultsContainer) {
+                searchInput.addEventListener('input', function () {
+                    clearTimeout(debounceTimer);
+                    const q = this.value.trim();
+
+                    if (q.length < 2) {
+                        dropdown.classList.add('hidden');
+                        return;
+                    }
+
+                    debounceTimer = setTimeout(() => {
+                        fetch(`/api/search/?q=${encodeURIComponent(q)}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.status === 'success' && data.results.length > 0) {
+                                    resultsContainer.innerHTML = data.results.map(movie => `
+                                        <a href="/movie/${movie.movieId}/" class="flex items-center gap-3 p-3 hover:bg-slate-800/80 transition-colors">
+                                            <div class="w-10 h-14 bg-slate-800 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                                ${movie.poster_url 
+                                                    ? `<img src="${movie.poster_url}" alt="${movie.title}" class="w-full h-full object-cover">`
+                                                    : `<i class="fa-solid fa-film text-slate-600 text-xs"></i>`
+                                                }
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <h4 class="text-sm font-semibold text-white truncate">${movie.title}</h4>
+                                                <div class="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
+                                                    <span>${movie.year || 'N/A'}</span>
+                                                    <span>•</span>
+                                                    <span class="truncate">${movie.genres_list.slice(0, 2).join(', ')}</span>
+                                                    <span>•</span>
+                                                    <span class="text-amber-400"><i class="fa-solid fa-star text-[10px]"></i> ${movie.vote_average}</span>
+                                                </div>
+                                            </div>
+                                            <i class="fa-solid fa-chevron-right text-xs text-slate-500 pr-2"></i>
+                                        </a>
+                                    `).join('');
+                                    dropdown.classList.remove('hidden');
+                                } else {
+                                    resultsContainer.innerHTML = `
+                                        <div class="p-4 text-center text-xs text-slate-400">
+                                            Tidak ditemukan film yang cocok dengan "${q}".
+                                        </div>
+                                    `;
+                                    dropdown.classList.remove('hidden');
+                                }
+                            })
+                            .catch(err => {
+                                console.error('Search error:', err);
+                            });
+                    }, 250);
+                });
+
+                // Hide dropdown when clicking outside
+                document.addEventListener('click', function (e) {
+                    if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+                        dropdown.classList.add('hidden');
+                    }
+                });
+            }
+        });
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

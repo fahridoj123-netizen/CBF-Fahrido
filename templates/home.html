@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+
+{% block title %}Katalog Film — Rekomendasi Content-Based Filtering{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
+
+    <!-- Hero Showcase Section (Featured Movie) -->
+    {% if featured_hero and not current_query and current_genre == 'All' %}
+    <div class="relative rounded-3xl overflow-hidden glass-panel border border-slate-700/60 shadow-2xl">
+        <!-- Background Gradient / Glow -->
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/95 to-transparent z-10"></div>
+        {% if featured_hero.poster_url %}
+        <div class="absolute right-0 top-0 bottom-0 w-2/3 bg-cover bg-center opacity-30 blur-[2px]" style="background-image: url('{{ featured_hero.poster_url }}');"></div>
+        {% endif %}
+
+        <div class="relative z-20 p-6 sm:p-10 lg:p-12 max-w-2xl flex flex-col justify-between">
+            <div>
+                <div class="flex flex-wrap items-center gap-2 mb-4">
+                    <span class="px-3 py-1 rounded-full bg-rose-600/30 text-rose-300 text-xs font-semibold border border-rose-500/40 flex items-center gap-1.5">
+                        <i class="fa-solid fa-fire text-rose-400"></i> Sorotan Film Terpopuler
+                    </span>
+                    <span class="px-2.5 py-1 rounded-full bg-slate-800/80 text-amber-400 text-xs font-bold border border-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-star text-xs"></i> {{ featured_hero.vote_average }} / 10
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium">{{ featured_hero.year }}</span>
+                </div>
+
+                <h1 class="font-brand text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight mb-4">
+                    {{ featured_hero.title }}
+                </h1>
+
+                {% if featured_hero.tagline %}
+                <p class="text-sm italic text-slate-300 mb-3 font-medium">"{{ featured_hero.tagline }}"</p>
+                {% endif %}
+
+                <p class="text-sm sm:text-base text-slate-300 line-clamp-3 mb-6 leading-relaxed">
+                    {{ featured_hero.overview|default:"Film pilihan terbaik dari koleksi MovieLens dengan metadata lengkap genre dan tag deskriptif." }}
+                </p>
+
+                <div class="flex flex-wrap gap-1.5 mb-8">
+                    {% for g in featured_hero.genres_list %}
+                    <span class="px-2.5 py-0.5 rounded-md bg-slate-800 text-slate-300 text-xs font-medium border border-slate-700">
+                        {{ g }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4">
+                <a href="{% url 'recommender:movie_detail' featured_hero.movieId %}" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-semibold text-sm shadow-xl shadow-rose-600/30 hover:shadow-rose-600/50 flex items-center gap-2.5 transition-all transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-circle-play text-base"></i>
+                    <span>Tonton & Rekomendasikan Film Serupa</span>
+                </a>
+                <a href="{% url 'recommender:methodology' %}" class="px-5 py-3.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 font-medium text-sm border border-slate-700 flex items-center gap-2 transition-colors">
+                    <i class="fa-solid fa-circle-info text-slate-400"></i>
+                    <span>Pelajari Cara Kerja TF-IDF & Cosine</span>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Filter & Section Title Bar -->
+    <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <h2 class="font-brand text-2xl font-bold text-white flex items-center gap-2.5">
+                    <i class="fa-solid fa-film text-rose-500 text-lg"></i>
+                    <span>Katalog Film MovieLens</span>
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">
+                    Pilih salah satu film untuk menghitung sudut vektor cosine similarity dan melihat rekomendasi film paling relevan secara realtime.
+                </p>
+            </div>
+
+            <!-- Total Results indicator -->
+            <div class="text-xs font-medium text-slate-400 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800 self-start sm:self-auto">
+                Total Film: <span class="text-rose-400 font-bold">{{ pagination.total_count }}</span>
+            </div>
+        </div>
+
+        <!-- Genre Filter Horizontal Bar -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+            <a 
+                href="?genre=All{% if current_query %}&q={{ current_query }}{% endif %}"
+                class="px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all {% if current_genre == 'All' %}bg-rose-600 text-white shadow-lg shadow-rose-600/30{% else %}bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800{% endif %}"
+            >
+                Semua Genre
+            </a>
+            {% for g in genres %}
+            <a 
+                href="?genre={{ g }}{% if current_query %}&q={{ current_query }}{% endif %}"
+                class="px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all {% if current_genre == g %}bg-rose-600 text-white shadow-lg shadow-rose-600/30{% else %}bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800{% endif %}"
+            >
+                {{ g }}
+            </a>
+            {% endfor %}
+        </div>
+
+        {% if current_query %}
+        <div class="flex items-center justify-between bg-slate-900/80 border border-slate-800 p-3 rounded-2xl text-xs text-slate-300">
+            <div>
+                Hasil pencarian untuk kata kunci: <strong class="text-white">"{{ current_query }}"</strong>
+            </div>
+            <a href="?genre={{ current_genre }}" class="text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1">
+                <i class="fa-solid fa-xmark"></i> Hapus Filter
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Movie Grid -->
+    {% if movies %}
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+        {% for movie in movies %}
+        <div class="group flex flex-col bg-slate-900/60 rounded-2xl overflow-hidden border border-slate-800/80 hover:border-rose-500/50 hover:bg-slate-900 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-rose-950/20">
+            
+            <!-- Poster Container -->
+            <a href="{% url 'recommender:movie_detail' movie.movieId %}" class="relative aspect-[2/3] w-full bg-slate-800 overflow-hidden block">
+                {% if movie.poster_url %}
+                <img 
+                    src="{{ movie.poster_url }}" 
+                    alt="{{ movie.title }}" 
+                    loading="lazy"
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-tr from-slate-900 to-slate-800\'><i class=\'fa-solid fa-film text-slate-600 text-3xl mb-2\'></i><span class=\'text-xs text-slate-400 font-semibold\'>{{ movie.title|addslashes }}</span></div>';"
+                >
+                {% else %}
+                <div class="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-tr from-slate-900 to-slate-800">
+                    <i class="fa-solid fa-film text-slate-600 text-3xl mb-2"></i>
+                    <span class="text-xs text-slate-400 font-semibold">{{ movie.title }}</span>
+                </div>
+                {% endif %}
+
+                <!-- Rating Badge -->
+                <div class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-amber-400 text-xs font-bold border border-white/10 flex items-center gap-1 shadow">
+                    <i class="fa-solid fa-star text-[10px]"></i> {{ movie.vote_average }}
+                </div>
+
+                <!-- Year Badge -->
+                {% if movie.year %}
+                <div class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-slate-300 text-xs font-semibold border border-white/10 shadow">
+                    {{ movie.year }}
+                </div>
+                {% endif %}
+
+                <!-- Hover Overlay with Play Button -->
+                <div class="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 gap-2 text-center">
+                    <div class="w-12 h-12 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-600/50 transform scale-75 group-hover:scale-100 transition-transform">
+                        <i class="fa-solid fa-play ml-0.5 text-lg"></i>
+                    </div>
+                    <span class="text-xs font-bold text-white tracking-wide">Pilih Film Ini</span>
+                    <span class="text-[10px] text-slate-300">Hitung Rekomendasi Real-Time</span>
+                </div>
+            </a>
+
+            <!-- Card Body -->
+            <div class="p-3.5 flex flex-col flex-1 justify-between gap-3">
+                <div>
+                    <a href="{% url 'recommender:movie_detail' movie.movieId %}" class="block">
+                        <h3 class="font-semibold text-sm text-white group-hover:text-rose-400 transition-colors line-clamp-1" title="{{ movie.title }}">
+                            {{ movie.title }}
+                        </h3>
+                    </a>
+
+                    <!-- Genres List -->
+                    <div class="flex flex-wrap gap-1 mt-1.5">
+                        {% for g in movie.genres_list|slice:":2" %}
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/60 font-medium">
+                            {{ g }}
+                        </span>
+                        {% endfor %}
+                        {% if movie.genres_list|length > 2 %}
+                        <span class="text-[10px] text-slate-500 font-medium self-center">+{{ movie.genres_list|length|add:"-2" }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <a 
+                    href="{% url 'recommender:movie_detail' movie.movieId %}" 
+                    class="w-full py-1.5 px-3 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-slate-700 hover:border-rose-500"
+                >
+                    <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i>
+                    <span>Rekomendasi</span>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination Controls -->
+    {% if pagination.total_pages > 1 %}
+    <div class="flex items-center justify-center gap-2 pt-6">
+        {% if pagination.has_prev %}
+        <a 
+            href="?page={{ pagination.prev_page }}{% if current_genre %}&genre={{ current_genre }}{% endif %}{% if current_query %}&q={{ current_query }}{% endif %}" 
+            class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 flex items-center gap-1.5 transition-colors"
+        >
+            <i class="fa-solid fa-chevron-left text-[10px]"></i> Sebelumnya
+        </a>
+        {% endif %}
+
+        <span class="px-4 py-2 rounded-xl bg-slate-950 text-slate-400 text-xs font-medium border border-slate-800">
+            Halaman <span class="text-white font-bold">{{ pagination.page }}</span> dari <span class="text-white font-bold">{{ pagination.total_pages }}</span>
+        </span>
+
+        {% if pagination.has_next %}
+        <a 
+            href="?page={{ pagination.next_page }}{% if current_genre %}&genre={{ current_genre }}{% endif %}{% if current_query %}&q={{ current_query }}{% endif %}" 
+            class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 flex items-center gap-1.5 transition-colors"
+        >
+            Selanjutnya <i class="fa-solid fa-chevron-right text-[10px]"></i>
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="p-12 text-center glass-panel rounded-3xl border border-slate-800 max-w-md mx-auto">
+        <div class="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-500 mx-auto mb-4 text-2xl">
+            <i class="fa-solid fa-clapperboard"></i>
+        </div>
+        <h3 class="text-base font-bold text-white mb-1">Film Tidak Ditemukan</h3>
+        <p class="text-xs text-slate-400 mb-6">Tidak ada film yang cocok dengan filter atau kata kunci pencarian yang Anda masukkan.</p>
+        <a href="{% url 'recommender:home' %}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold">
+            <i class="fa-solid fa-rotate-left"></i> Reset Pencarian
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
