@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+venv/
+ENV/
+
+# Large raw datasets (not needed on Vercel, already processed into ml_artifacts)
+movies_metadata.csv
+ml-latest-small.zip
+ml-latest-small/
+Movie-Recommendation-System-Using-Machine-Learning-Content-Based-and-Collaborative-Filtering/
+
+# Static files collected
+staticfiles/
+
+# System / OS
+.DS_Store
+Thumbs.db
