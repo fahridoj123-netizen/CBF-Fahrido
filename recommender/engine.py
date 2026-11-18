@@ -19,13 +19,17 @@ class ContentBasedRecommender:
         artifacts_dir = getattr(settings, 'ML_ARTIFACTS_DIR', os.path.join(settings.BASE_DIR, 'ml_artifacts'))
         print(f"Loading Content-Based ML artifacts from {artifacts_dir}...")
 
-        # Load clean dataset
-        df_path = os.path.join(artifacts_dir, 'movies_cleaned.pkl')
-        if not os.path.exists(df_path):
-            df_path = os.path.join(artifacts_dir, 'movies_cleaned.csv')
-            self.movies_df = pd.read_csv(df_path)
-        else:
-            self.movies_df = pd.read_pickle(df_path)
+        # Load clean dataset (with safe fallback if pickle fails across environments)
+        pkl_path = os.path.join(artifacts_dir, 'movies_cleaned.pkl')
+        csv_path = os.path.join(artifacts_dir, 'movies_cleaned.csv')
+        try:
+            if os.path.exists(pkl_path):
+                self.movies_df = pd.read_pickle(pkl_path)
+            else:
+                self.movies_df = pd.read_csv(csv_path)
+        except Exception as e:
+            print(f"Pickle load error ({e}), falling back to CSV...")
+            self.movies_df = pd.read_csv(csv_path)
 
         # Load TF-IDF matrix & mappings
         self.tfidf_matrix = joblib.load(os.path.join(artifacts_dir, 'tfidf_matrix.joblib'))
